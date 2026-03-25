@@ -201,33 +201,7 @@ import gymnasium as gym  # en vez de: import gym
 
 ---
 
-### 3. Docker Hub — Error 500 al hacer build
-
-Si al ejecutar `docker compose up --build` aparece:
-```
-failed to fetch oauth token: unexpected status from POST request
-to https://auth.docker.io/token: 500 Internal Server Error
-```
-
-Es un problema temporal del lado de Docker Hub (su servidor de autenticación). Soluciones:
-
-```bash
-# Opción A: esperar unos minutos y reintentar
-docker compose up -d --build
-
-# Opción B: levantar con la imagen ya cacheada (sin rebuild)
-docker compose up -d
-
-# Opción C: login explícito antes del build
-docker login
-docker compose up -d --build
-```
-
-Verificar estado de Docker Hub: https://www.dockerstatus.com
-
----
-
-### 4. Migraciones — `InconsistentMigrationHistory`
+### 3. Migraciones — `InconsistentMigrationHistory`
 
 Si al resetear Docker con `docker compose down -v` y volver a levantar aparece un error de migraciones inconsistentes, correr dentro del contenedor:
 
