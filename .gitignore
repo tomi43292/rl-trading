@@ -44,3 +44,7 @@ trained_models/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Docs personales 
+ARCHITECTURE.md
+Reinforcement-learning-for-trading.md
