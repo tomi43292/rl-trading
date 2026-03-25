@@ -19,27 +19,29 @@ A production-grade **Reinforcement Learning trading system** built with Django, 
 
 ## Quick Start
 
-### With Docker (recommended)
+> **Requisito**: Necesitás un token de la [Market Data API](https://www.marketdata.app/). Registrate gratis y copiá tu token.
+
+### Con Docker (recomendado)
 
 ```bash
-# Clone
+# Clonar
 git clone https://github.com/yourusername/rl-trading.git
 cd rl-trading
 
-# Configure
+# Configurar variables de entorno
 cp .env.example .env
-# Edit .env with your MARKETDATA_API_TOKEN
+# Editar .env y completar MARKETDATA_API_TOKEN
 
-# Run
-docker compose up -d
+# Construir y levantar (primera vez tarda ~10 min por TensorFlow)
+docker compose up -d --build
 
-# The API is available at http://localhost:8000/
+# La API está disponible en http://localhost:8000/
 ```
 
-### Without Docker
+### Sin Docker
 
 ```bash
-# Clone and setup
+# Clonar y configurar entorno
 git clone https://github.com/yourusername/rl-trading.git
 cd rl-trading
 python -m venv venv
@@ -47,17 +49,18 @@ venv\Scripts\activate        # Windows
 source venv/bin/activate     # Linux/Mac
 pip install -r requirements.txt
 
-# Configure
+# Configurar variables de entorno
 cp .env.example .env
-# Edit .env with your MARKETDATA_API_TOKEN
+# Editar .env y completar MARKETDATA_API_TOKEN
 
-# Database
+# Crear y aplicar migraciones
+python manage.py makemigrations market_data trading
 python manage.py migrate
 
-# Run
+# Levantar servidor
 python manage.py runserver
 
-# In separate terminals:
+# En terminales separadas:
 celery -A config worker -l info
 celery -A config beat -l info
 ```
@@ -93,116 +96,187 @@ celery -A config beat -l info
 | `GET` | `/api/trading/sessions/{id}/summary/` | Get session summary |
 | `GET` | `/api/trading/sessions/{id}/trades/` | Get all trades from a session |
 
-## Example Workflow
+## Flujo de Ejemplo
 
 ```bash
-# 1. Add a symbol
+# 1. Agregar un símbolo
 curl -X POST http://localhost:8000/api/market-data/symbols/ \
   -H "Content-Type: application/json" \
   -d '{"ticker": "AAPL", "name": "Apple Inc."}'
 
-# 2. Ingest historical data
+# 2. Ingestar datos históricos (365 velas diarias)
 curl -X POST http://localhost:8000/api/market-data/ingest/ \
   -H "Content-Type: application/json" \
   -d '{"symbols": ["AAPL"], "resolution": "D", "countback": 365}'
 
-# 3. Check indicators
+# 3. Ver indicadores técnicos
 curl http://localhost:8000/api/indicators/summary/?symbol=AAPL
 
-# 4. Train RL agent
+# 4. Entrenar el agente RL
 curl -X POST http://localhost:8000/api/trading/train/ \
   -H "Content-Type: application/json" \
   -d '{"symbol": "AAPL", "episodes": 100, "batch_size": 32, "initial_cash": 10000}'
 
-# 5. Check results
+# 5. Ver resultados
 curl http://localhost:8000/api/trading/sessions/
 ```
 
-## Architecture
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for a detailed explanation of the project architecture, design decisions, and code walkthrough.
-
-## Running Tests
+## Correr Tests
 
 ```bash
 python manage.py test
-# or
+# o por app:
 python manage.py test market_data
 python manage.py test indicators
 python manage.py test trading
 ```
 
-## TensorBoard — Training Visualization
+## TensorBoard — Visualización del Entrenamiento
 
-The project integrates **TensorBoard** for real-time monitoring of the DQN training process. Logs are generated automatically during training.
+El proyecto integra **TensorBoard** para monitorear el proceso de entrenamiento del DQN en tiempo real. Los logs se generan automáticamente durante cada sesión de entrenamiento.
 
-### Usage
+### Uso
 
 ```bash
-# 1. Train an agent (logs are generated automatically)
+# 1. Entrenar un agente (los logs se generan automáticamente)
 curl -X POST http://localhost:8000/api/trading/train-sync/ \
   -H "Content-Type: application/json" \
   -d '{"symbol": "AAPL", "episodes": 50}'
 
-# 2. Launch TensorBoard
+# 2. Lanzar TensorBoard (desde la raíz del proyecto)
 tensorboard --logdir=logs/tensorboard --port=6006
 
-# 3. Open http://localhost:6006
+# 3. Abrir http://localhost:6006
 ```
 
-### Available Metrics
+> **Nota Windows**: Si obtenés `ModuleNotFoundError: No module named 'pkg_resources'`, ejecutá:
+> ```bash
+> pip install --upgrade tensorboard
+> ```
 
-| Metric | Description |
-|--------|-------------|
-| `entrenamiento/recompensa` | Total reward per episode |
-| `entrenamiento/epsilon` | Exploration rate decay (1.0 → 0.01) |
-| `entrenamiento/valor_portfolio` | Portfolio value at episode end |
-| `red_neuronal/loss` | Average DQN training loss per replay step |
-| `backtest/*` | Final backtest results (P/L, trades, portfolio value) |
-| `pesos/*` | Neural network weight histograms (every 10 episodes) |
+### Métricas Disponibles
 
-Each training session generates its own log directory under `logs/tensorboard/`. You can compare multiple sessions directly in the TensorBoard UI.
+| Métrica | Descripción |
+|---------|-------------|
+| `entrenamiento/recompensa` | Recompensa total por episodio |
+| `entrenamiento/epsilon` | Decaimiento de la tasa de exploración (1.0 → 0.01) |
+| `entrenamiento/valor_portfolio` | Valor del portfolio al final de cada episodio |
+| `red_neuronal/loss` | Loss promedio del batch de replay de la red neuronal |
+| `backtest/*` | Resultados finales del backtest (P/L, trades, portfolio) |
+| `pesos/*` | Histogramas de pesos de la red neuronal (cada 10 episodios) |
 
-## Project Structure
+Cada sesión de entrenamiento genera su propia carpeta en `logs/tensorboard/`. Podés comparar múltiples sesiones directamente en la interfaz de TensorBoard.
+
+## Problemas Conocidos de Dependencias
+
+### 1. TensorBoard — `No module named 'pkg_resources'` (Windows)
+
+En Windows, la versión de TensorBoard instalada por TensorFlow puede fallar al importar `pkg_resources`.
+
+```bash
+# Solución: actualizar TensorBoard manualmente
+pip install --upgrade tensorboard
+```
+
+Esta versión actualizada es **solo para uso local** (TensorBoard se usa fuera de Docker). No agregar al `requirements.txt` porque conflictúa con `tensorflow==2.17.1` que requiere `tensorboard<2.18`.
+
+---
+
+### 2. OpenAI Gym — Warning de NumPy 2.0
+
+Al correr tests o el servidor, puede aparecer este warning:
+
+```
+Gym has been unmaintained since 2022 and does not support NumPy 2.0
+```
+
+Esto es solo un **warning informativo**, no afecta el funcionamiento. El proyecto usa `numpy==1.26.2` (NumPy 1.x), por lo que la incompatibilidad real no aplica.
+
+En el futuro, reemplazar `gym` por su sucesor:
+```python
+# En trading/environment.py
+import gymnasium as gym  # en vez de: import gym
+```
+
+---
+
+### 3. Docker Hub — Error 500 al hacer build
+
+Si al ejecutar `docker compose up --build` aparece:
+```
+failed to fetch oauth token: unexpected status from POST request
+to https://auth.docker.io/token: 500 Internal Server Error
+```
+
+Es un problema temporal del lado de Docker Hub (su servidor de autenticación). Soluciones:
+
+```bash
+# Opción A: esperar unos minutos y reintentar
+docker compose up -d --build
+
+# Opción B: levantar con la imagen ya cacheada (sin rebuild)
+docker compose up -d
+
+# Opción C: login explícito antes del build
+docker login
+docker compose up -d --build
+```
+
+Verificar estado de Docker Hub: https://www.dockerstatus.com
+
+---
+
+### 4. Migraciones — `InconsistentMigrationHistory`
+
+Si al resetear Docker con `docker compose down -v` y volver a levantar aparece un error de migraciones inconsistentes, correr dentro del contenedor:
+
+```bash
+docker compose exec api python manage.py migrate
+```
+
+## Estructura del Proyecto
 
 ```
 rl-trading/
-├── config/                  # Django project configuration
+├── config/                  # Configuración del proyecto Django
 │   ├── settings/
-│   │   ├── base.py          # Shared settings (Redis, Celery, DRF, Market Data API)
-│   │   └── development.py   # Dev overrides
-│   ├── celery.py            # Celery app + beat schedule
-│   ├── urls.py              # Root URL routing
+│   │   ├── base.py          # Settings compartidos (Redis, Celery, DRF, Market Data API, TensorBoard)
+│   │   └── development.py   # Overrides de desarrollo
+│   ├── celery.py            # App Celery + schedule de Beat
+│   ├── urls.py              # Routing de URLs
 │   └── wsgi.py
-├── market_data/             # Data ingestion from Market Data API
+├── market_data/             # Ingesta de datos desde Market Data API
+│   ├── migrations/          # Migraciones de base de datos
 │   ├── models.py            # Symbol, OHLCV, PriceSnapshot
-│   ├── services.py          # MarketDataService (API client + Redis cache)
-│   ├── tasks.py             # Celery: periodic price ingestion
-│   ├── views.py             # REST endpoints
+│   ├── services.py          # MarketDataService (cliente API + caché Redis)
+│   ├── tasks.py             # Celery: ingesta periódica de precios
+│   ├── views.py             # Endpoints REST
 │   └── tests.py
-├── indicators/              # Technical analysis with Pandas
+├── indicators/              # Análisis técnico con Pandas
 │   ├── services.py          # IndicatorService (EMA, RSI, MACD, BB, OBV)
-│   ├── tasks.py             # Celery: periodic indicator calculation
-│   ├── views.py             # REST endpoints
+│   ├── tasks.py             # Celery: cálculo periódico de indicadores
+│   ├── views.py             # Endpoints REST
 │   └── tests.py
-├── trading/                 # RL training + backtesting
+├── trading/                 # Entrenamiento RL + backtesting
+│   ├── migrations/          # Migraciones de base de datos
 │   ├── environment.py       # StockTradingEnv (OpenAI Gym)
 │   ├── agent.py             # DQNAgent (TensorFlow/Keras)
-│   ├── callbacks.py         # TrainingLogger (TensorBoard metrics)
+│   ├── callbacks.py         # TrainingLogger (métricas TensorBoard)
 │   ├── models.py            # TrainingSession, Trade
-│   ├── services.py          # TradingService (orchestrates training)
-│   ├── tasks.py             # Celery: async training
-│   ├── views.py             # REST endpoints
+│   ├── services.py          # TradingService (orquesta el entrenamiento)
+│   ├── tasks.py             # Celery: entrenamiento asíncrono
+│   ├── views.py             # Endpoints REST
 │   └── tests.py
-├── logs/                    # TensorBoard logs (gitignored)
+├── logs/                    # Logs de TensorBoard (ignorado por git)
 ├── Dockerfile
 ├── docker-compose.yml       # API + Worker + Beat + Redis
 ├── requirements.txt
 └── README.md
 ```
 
-## License
+## Licencia
 
-This project is for educational and demonstration purposes.
+Este proyecto es para fines educativos y de demostración.
 
-> **Disclaimer**: This system is for learning purposes only and does not constitute financial advice. Do not use it for real trading without extensive validation.
+> **Disclaimer**: Este sistema es solo para aprendizaje y no constituye asesoramiento financiero. No usarlo para trading real sin validación exhaustiva.
