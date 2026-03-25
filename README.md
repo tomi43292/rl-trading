@@ -12,6 +12,7 @@ A production-grade **Reinforcement Learning trading system** built with Django, 
 | **Celery** | Async task execution (training, data ingestion) |
 | **Pandas** | Data manipulation + technical indicator calculation |
 | **TensorFlow/Keras** | Deep Q-Network neural network |
+| **TensorBoard** | Training visualization and monitoring |
 | **OpenAI Gym** | RL environment abstraction |
 | **Docker** | Containerization |
 | **Market Data API** | Real-time stock price data source |
@@ -131,6 +132,37 @@ python manage.py test indicators
 python manage.py test trading
 ```
 
+## TensorBoard — Training Visualization
+
+The project integrates **TensorBoard** for real-time monitoring of the DQN training process. Logs are generated automatically during training.
+
+### Usage
+
+```bash
+# 1. Train an agent (logs are generated automatically)
+curl -X POST http://localhost:8000/api/trading/train-sync/ \
+  -H "Content-Type: application/json" \
+  -d '{"symbol": "AAPL", "episodes": 50}'
+
+# 2. Launch TensorBoard
+tensorboard --logdir=logs/tensorboard --port=6006
+
+# 3. Open http://localhost:6006
+```
+
+### Available Metrics
+
+| Metric | Description |
+|--------|-------------|
+| `entrenamiento/recompensa` | Total reward per episode |
+| `entrenamiento/epsilon` | Exploration rate decay (1.0 → 0.01) |
+| `entrenamiento/valor_portfolio` | Portfolio value at episode end |
+| `red_neuronal/loss` | Average DQN training loss per replay step |
+| `backtest/*` | Final backtest results (P/L, trades, portfolio value) |
+| `pesos/*` | Neural network weight histograms (every 10 episodes) |
+
+Each training session generates its own log directory under `logs/tensorboard/`. You can compare multiple sessions directly in the TensorBoard UI.
+
 ## Project Structure
 
 ```
@@ -156,11 +188,13 @@ rl-trading/
 ├── trading/                 # RL training + backtesting
 │   ├── environment.py       # StockTradingEnv (OpenAI Gym)
 │   ├── agent.py             # DQNAgent (TensorFlow/Keras)
+│   ├── callbacks.py         # TrainingLogger (TensorBoard metrics)
 │   ├── models.py            # TrainingSession, Trade
 │   ├── services.py          # TradingService (orchestrates training)
 │   ├── tasks.py             # Celery: async training
 │   ├── views.py             # REST endpoints
 │   └── tests.py
+├── logs/                    # TensorBoard logs (gitignored)
 ├── Dockerfile
 ├── docker-compose.yml       # API + Worker + Beat + Redis
 ├── requirements.txt

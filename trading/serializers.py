@@ -20,7 +20,7 @@ class TrainingSessionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'ticker', 'status', 'episodes', 'batch_size', 'initial_cash',
             'final_epsilon', 'total_reward', 'final_portfolio_value',
-            'profit_loss', 'profit_loss_pct', 'model_path',
+            'profit_loss', 'profit_loss_pct', 'model_path', 'tensorboard_log_dir',
             'started_at', 'completed_at', 'created_at', 'error_message',
             'trades',
         ]

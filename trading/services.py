@@ -16,6 +16,7 @@ from market_data.models import Symbol
 from .models import TrainingSession, Trade
 from .environment import StockTradingEnv
 from .agent import DQNAgent
+from .callbacks import TrainingLogger
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,7 @@ class TradingService:
             started_at=timezone.now(),
         )
 
+        tb_logger = None
         try:
             # Step 1: Get data with indicators
             logger.info(f"Loading indicator data for {symbol_ticker}...")
@@ -73,10 +75,11 @@ class TradingService:
 
             logger.info(f"Data split: train={len(train_data)}, test={len(test_data)}")
 
-            # Step 3: Create environment and agent
+            # Step 3: Create environment, agent, and TensorBoard logger
             env = StockTradingEnv(train_data, initial_cash=initial_cash)
             state_size = env.observation_space.shape[0]
             agent = DQNAgent(state_size, env.action_space)
+            tb_logger = TrainingLogger(session.id, symbol_ticker)
 
             # Step 4: Training loop
             logger.info(f"Starting training: {episodes} episodes...")
@@ -100,10 +103,18 @@ class TradingService:
 
                 episode_rewards.append(total_reward)
 
+                # Replay y registrar loss en TensorBoard
                 if len(agent.memory) > batch_size:
-                    agent.replay(batch_size)
+                    loss = agent.replay(batch_size)
+                    if loss is not None:
+                        tb_logger.log_replay(loss)
 
+                # Registrar métricas del episodio
+                tb_logger.log_episode(e, total_reward, agent.epsilon, env.portfolio_value)
+
+                # Registrar histogramas de pesos cada 10 episodios
                 if (e + 1) % 10 == 0:
+                    tb_logger.log_model_weights(agent.model, e)
                     logger.info(
                         f"Episode {e+1}/{episodes} | "
                         f"Reward: {total_reward:.2f} | "
@@ -114,6 +125,15 @@ class TradingService:
             logger.info("Running backtest on test data...")
             backtest_result = TradingService._backtest(
                 agent, test_data, state_size, initial_cash, session, symbol
+            )
+
+            # Registrar resultados del backtest en TensorBoard
+            tb_logger.log_backtest(
+                portfolio_value=backtest_result['portfolio_value'],
+                profit_loss=backtest_result['portfolio_value'] - initial_cash,
+                total_trades=backtest_result['trades_count'],
+                buy_trades=len([t for t in backtest_result.get('trade_history', []) if t.get('type') == 'BUY']),
+                sell_trades=len([t for t in backtest_result.get('trade_history', []) if t.get('type') == 'SELL']),
             )
 
             # Step 6: Save model
@@ -132,6 +152,7 @@ class TradingService:
                 (session.final_portfolio_value - session.initial_cash) / session.initial_cash * 100
             )
             session.model_path = model_path
+            session.tensorboard_log_dir = tb_logger.log_dir
             session.save()
 
             logger.info(
@@ -147,6 +168,10 @@ class TradingService:
             session.save()
             logger.exception(f"Training failed for {symbol_ticker}: {e}")
             raise
+
+        finally:
+            if tb_logger is not None:
+                tb_logger.close()
 
     @staticmethod
     def _backtest(

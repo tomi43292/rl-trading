@@ -25,6 +25,7 @@ class TrainingSession(models.Model):
     profit_loss = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     profit_loss_pct = models.FloatField(null=True, blank=True)
     model_path = models.CharField(max_length=500, blank=True, default='')
+    tensorboard_log_dir = models.CharField(max_length=500, blank=True, default='')
 
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)

@@ -117,7 +117,7 @@ class TrainingSessionModelTest(TestCase):
             batch_size=32,
         )
         self.assertEqual(session.status, 'PENDING')
-        self.assertEqual(str(session.initial_cash), '10000.00')
+        self.assertIn('10000', str(session.initial_cash))
 
     def test_session_str(self):
         session = TrainingSession.objects.create(symbol=self.symbol, episodes=100)

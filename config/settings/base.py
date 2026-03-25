@@ -7,6 +7,11 @@ from decouple import config, Csv
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+# ──────────────────────────────────────────────
+# TensorBoard
+# ──────────────────────────────────────────────
+TENSORBOARD_LOG_DIR = os.path.join(BASE_DIR, 'logs', 'tensorboard')
+
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-change-in-production')
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=Csv())

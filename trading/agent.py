@@ -81,16 +81,20 @@ class DQNAgent:
         act_values = self.model.predict(state, verbose=0)
         return np.unravel_index(np.argmax(act_values[0]), self.action_space.nvec)
 
-    def replay(self, batch_size: int = None):
+    def replay(self, batch_size: int = None) -> float | None:
         """
         Train the model using a random batch from the experience replay buffer.
         This is the core learning step of DQN.
+
+        Returns:
+            Average loss from the training batch, or None if buffer too small.
         """
         batch_size = batch_size or self.batch_size
         if len(self.memory) < batch_size:
-            return
+            return None
 
         minibatch = random.sample(self.memory, batch_size)
+        total_loss = 0.0
 
         for state, action, reward, next_state, done in minibatch:
             target = reward
@@ -103,11 +107,15 @@ class DQNAgent:
             action_idx = np.ravel_multi_index(action, self.action_space.nvec)
             target_f[0][action_idx] = target
 
-            self.model.fit(state, target_f, epochs=1, verbose=0)
+            history = self.model.fit(state, target_f, epochs=1, verbose=0)
+            total_loss += history.history['loss'][0]
 
         # Decay exploration rate
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
+
+        avg_loss = total_loss / len(minibatch)
+        return avg_loss
 
     def save(self, filepath: str):
         """Save the trained model to disk."""
