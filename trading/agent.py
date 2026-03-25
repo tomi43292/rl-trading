@@ -23,7 +23,7 @@ class DQNAgent:
     def __init__(self, state_size: int, action_space, memory_size: int = 3000):
         self.state_size = state_size
         self.action_space = action_space
-        self.action_size = action_space.nvec.prod()
+        self.action_size = int(action_space.nvec.prod())
 
         # Experience replay buffer
         self.memory = deque(maxlen=memory_size)
