@@ -2,6 +2,13 @@
 Custom OpenAI Gym environment for stock trading with reinforcement learning.
 Uses technical indicators from the indicators app as observation space.
 """
+import warnings
+
+# gym 0.26.2 is unmaintained but compatible with numpy 1.26.2.
+# Suppress the deprecation spam before import so it doesn't flood logs.
+warnings.filterwarnings('ignore', message='.*Gym has been unmaintained.*')
+warnings.filterwarnings('ignore', message='.*Please upgrade to Gymnasium.*')
+
 import gym
 import numpy as np
 import pandas as pd

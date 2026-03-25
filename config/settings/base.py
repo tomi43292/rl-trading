@@ -131,6 +131,8 @@ CELERY_TIMEZONE = 'America/New_York'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 600
 CELERY_TASK_SOFT_TIME_LIMIT = 540
+# Evita el deprecation warning de Celery 6.0 sobre retry en startup
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # ──────────────────────────────────────────────
 # Market Data API

@@ -1,7 +1,12 @@
 """Celery configuration for RL Trading project."""
 import os
+import warnings
 from celery import Celery
 from celery.schedules import crontab
+
+# Suppress the loud OpenAI Gym deprecation warning in Celery worker subprocesses
+warnings.filterwarnings('ignore', message='.*Gym has been unmaintained.*')
+warnings.filterwarnings('ignore', message='.*Please upgrade to Gymnasium.*')
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.development')
 

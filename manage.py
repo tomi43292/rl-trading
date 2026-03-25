@@ -2,7 +2,12 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+import warnings
 
+# Suppress the loud OpenAI Gym deprecation warning (gym 0.26.2 is unmaintained
+# but compatible with numpy 1.26.2 used in this project).
+warnings.filterwarnings('ignore', message='.*Gym has been unmaintained.*')
+warnings.filterwarnings('ignore', message='.*Please upgrade to Gymnasium.*')
 
 def main():
     """Run administrative tasks."""
